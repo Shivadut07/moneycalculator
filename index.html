@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Financial Ledger & Calculator</title>
+    <style>
+        :root {
+            --bg-color: #e0e3eb;
+            --panel-bg: #ffffff;
+            --text-main: #000e1a;
+            --border-light: #cccccc;
+            --btn-give: #ff5722;
+            --btn-receive: #8bc34a;
+            --btn-neutral: #03a9f4;
+            --calc-bg: #2c3e50;
+            --calc-key: #eee;
+            --calc-key-op: #ff9800;
+            --calc-key-action: #e74c3c;
+        }
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .dashboard-container {
+            display: flex;
+            gap: 25px;
+            max-width: 1400px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        .left-column {
+            flex: 1;
+            min-width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        .right-column {
+            flex: 2;
+            min-width: 500px;
+        }
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.4rem;
+            border-bottom: 2px solid var(--border-light);
+            padding-bottom: 12px;
+        }
+        
+        /* Personal Debit Module Styles */
+        .debit-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--btn-give);
+            margin: 20px 0;
+            text-align: center;
+            background-color: #fff3e0;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .input-group {
+            display: flex;
+            gap: 15px;
+        }
+        input[type="number"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 1.1rem;
+        }
+        button {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        button:hover { transform: scale(1.02); opacity: 0.9; }
+        button:active { transform: scale(0.95); }
+        .btn-add { background-color: var(--btn-neutral); }
+        
+        /* Peer Ledger Matrix Styles */
+        .ledger-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-light);
+            gap: 15px;
+        }
+        .ledger-row:last-child { border-bottom: none; }
+        .peer-name {
+            width: 100px;
+            font-weight: 600;
+            text-transform: capitalize;
+            font-size: 1.1rem;
+        }
+        .ledger-controls {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+        }
+        .btn-give { background-color: var(--btn-give); font-size: 0.9rem; }
+        .btn-receive { background-color: var(--btn-receive); font-size: 0.9rem; }
+        .balance-display {
+            width: 160px;
+            text-align: right;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        .balance-positive { color: #2e7d32; background-color: #e8f5e9; }
+        .balance-negative { color: #c62828; background-color: #ffebee; }
+        .balance-neutral { color: var(--text-main); background-color: #f5f5f5; }
+
+        /* Real-Time Calculator Styles */
+        .calculator {
+            background-color: var(--calc-bg);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        .calculator__display {
+            background-color: #ffeb3b;
+            color: var(--text-main);
+            font-size: 2.2rem;
+            text-align: right;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            border: none;
+        }
+        .calculator__keys {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        .calculator__keys button {
+            background-color: var(--calc-key);
+            color: var(--text-main);
+            font-size: 1.4rem;
+            padding: 18px 0;
+            border-radius: 10px;
+        }
+        .calculator__keys button[data-action="add"],
+        .calculator__keys button[data-action="subtract"],
+        .calculator__keys button[data-action="multiply"],
+        .calculator__keys button[data-action="divide"] {
+            background-color: var(--calc-key-op);
+            color: white;
+        }
+        .calculator__keys button[data-action="calculate"] {
+            background-color: var(--btn-receive);
+            color: white;
+            grid-column: span 2;
+        }
+        .calculator__keys button[data-action="clear"] {
+            background-color: var(--calc-key-action);
+            color: white;
+            grid-column: span 2;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    
+    <div class="left-column">
+        <!-- Personal Daily Debit Accumulator Module -->
+        <div class="panel">
+            <h2>Personal Daily Debit Accumulator</h2>
+            <div class="debit-display">₹<span id="total-debit-val">0.00</span></div>
+            <div class="input-group">
+                <input type="number" id="daily-debit-input" placeholder="Enter daily debit..." step="0.01" min="0">
+                <button class="btn-add" onclick="addDailyDebit()">Add to Total</button>
+            </div>
+        </div>
+
+        <!-- Real-Time Calculator Widget -->
+        <div class="panel calculator">
+            <div class="calculator__display" id="calc-display">0</div>
+            <div class="calculator__keys" id="calc-keys">
+                <button data-action="clear">AC</button>
+                <button data-action="divide">÷</button>
+                <button data-action="multiply">×</button>
+                <button>7</button>
+                <button>8</button>
+                <button>9</button>
+                <button data-action="subtract">-</button>
+                <button>4</button>
+                <button>5</button>
+                <button>6</button>
+                <button data-action="add">+</button>
+                <button>1</button>
+                <button>2</button>
+                <button>3</button>
+                <button>0</button>
+                <button data-action="decimal">.</button>
+                <button data-action="calculate">=</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Peer-to-Peer Financial Ledger Module -->
+    <div class="right-column">
+        <div class="panel">
+            <h2>Cohort Ledger (Pending Balances)</h2>
+            <div id="ledger-container"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- Data Initialization & Lexicographical Sorting ---
+    const rawFriendsArray = ["thiwakar", "gojo", "mowlish", "goww", "aravindh", "mohan", "gowtham", "parithi", "soukar"];
+    const sortedFriends = rawFriendsArray.sort(); 
+    
+    // Application State Object
+    let personalTotalDebit = 0;
+    const ledgerState = {};
+    
+    // Initialize ledger state dictionary to 0 for all peers
+    sortedFriends.forEach(peer => {
+        ledgerState[peer] = 0;
+    });
+
+    // --- Personal Debit Accumulator Logic ---
+    function addDailyDebit() {
+        const inputEl = document.getElementById('daily-debit-input');
+        const displayEl = document.getElementById('total-debit-val');
+        const amount = parseFloat(inputEl.value);
+        
+        if (!isNaN(amount) && amount > 0) {
+            personalTotalDebit += amount;
+            displayEl.textContent = personalTotalDebit.toFixed(2);
+            inputEl.value = '';
+        }
+    }
+
+    // --- Dynamic Ledger Rendering Pipeline ---
+    function renderLedger() {
+        const container = document.getElementById('ledger-container');
+        container.innerHTML = ''; // Purge existing DOM nodes
+
+        sortedFriends.forEach(peer => {
+            const currentBalance = ledgerState[peer];
+            
+            // Format balance display text and semantic classes
+            let balanceText = 'Settled (₹0)';
+            let balanceClass = 'balance-neutral';
+            if (currentBalance > 0) {
+                balanceText = `Owes you ₹${currentBalance.toFixed(2)}`;
+                balanceClass = 'balance-positive';
+            } else if (currentBalance < 0) {
+                balanceText = `You owe ₹${Math.abs(currentBalance).toFixed(2)}`;
+                balanceClass = 'balance-negative';
+            }
+
+            const row = document.createElement('div');
+            row.className = 'ledger-row';
+            row.innerHTML = `
+                <div class="peer-name">${peer}</div>
+                <div class="ledger-controls">
+                    <input type="number" id="input-${peer}" placeholder="Amount" step="0.01" min="0">
+                    <button class="btn-give" onclick="processTransaction('${peer}', 'give')">I Give</button>
+                    <button class="btn-receive" onclick="processTransaction('${peer}', 'receive')">They Give</button>
+                </div>
+                <div class="balance-display ${balanceClass}">${balanceText}</div>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    function processTransaction(peer, action) {
+        const inputEl = document.getElementById(`input-${peer}`);
+        const amount = parseFloat(inputEl.value);
+        
+        if (!isNaN(amount) && amount > 0) {
+            if (action === 'give') {
+                // Disbursement increases peer's debt to primary user
+                ledgerState[peer] += amount;
+            } else if (action === 'receive') {
+                // Receipt decreases peer's debt to primary user
+                ledgerState[peer] -= amount;
+            }
+            inputEl.value = '';
+            renderLedger(); // Trigger a DOM repaint pipeline
+        }
+    }
+
+    // Initialize the ledger rendering upon page load
+    renderLedger();
+
+    // --- Event Delegation State Machine for Calculator ---
+    const calcKeys = document.getElementById('calc-keys');
+    const calcDisplay = document.getElementById('calc-display');
+    let calcState = {
+        firstOperand: null,
+        operator: null,
+        waitingForSecondOperand: false,
+        displayValue: '0'
+    };
+
+    function updateCalcDisplay() {
+        calcDisplay.textContent = calcState.displayValue;
+    }
+
+    calcKeys.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!target.matches('button')) return;
+
+        const action = target.dataset.action;
+        const keyContent = target.textContent;
+
+        if (!action) {
+            // Numerical Input Handling
+            if (calcState.waitingForSecondOperand) {
+                calcState.displayValue = keyContent;
+                calcState.waitingForSecondOperand = false;
+            } else {
+                calcState.displayValue = calcState.displayValue === '0' ? keyContent : calcState.displayValue + keyContent;
+            }
+        } else if (action === 'decimal') {
+            if (!calcState.displayValue.includes('.')) {
+                calcState.displayValue += '.';
+            }
+        } else if (['add', 'subtract', 'multiply', 'divide'].includes(action)) {
+            handleOperator(action);
+        } else if (action === 'calculate') {
+            if (calcState.operator && calcState.firstOperand !== null) {
+                const secondOperand = parseFloat(calcState.displayValue);
+                calcState.displayValue = String(calculateResult(calcState.firstOperand, secondOperand, calcState.operator));
+                calcState.firstOperand = null;
+                calcState.operator = null;
+                calcState.waitingForSecondOperand = false;
+            }
+        } else if (action === 'clear') {
+            calcState.displayValue = '0';
+            calcState.firstOperand = null;
+            calcState.operator = null;
+            calcState.waitingForSecondOperand = false;
+        }
+        updateCalcDisplay();
+    });
+
+    function handleOperator(nextOperator) {
+        const inputValue = parseFloat(calcState.displayValue);
+        
+        if (calcState.operator && calcState.waitingForSecondOperand) {
+            calcState.operator = nextOperator;
+            return;
+        }
+        if (calcState.firstOperand == null && !isNaN(inputValue)) {
+            calcState.firstOperand = inputValue;
+        } else if (calcState.operator) {
+            const result = calculateResult(calcState.firstOperand, inputValue, calcState.operator);
+            calcState.displayValue = String(result);
+            calcState.firstOperand = result;
+        }
+        calcState.waitingForSecondOperand = true;
+        calcState.operator = nextOperator;
+    }
+
+    function calculateResult(first, second, operator) {
+        if (operator === 'add') return first + second;
+        if (operator === 'subtract') return first - second;
+        if (operator === 'multiply') return first * second;
+        if (operator === 'divide') return first / second;
+        return second;
+    }
+</script>
+</body>
+</html>
